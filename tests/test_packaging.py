@@ -8,7 +8,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_home_assistant_metadata_matches_release_image():
+def test_home_assistant_metadata_builds_from_source():
     config = yaml.safe_load((ROOT / "tuya_local_key" / "config.yaml").read_text())
     repository = yaml.safe_load((ROOT / "repository.yaml").read_text())
 
@@ -18,7 +18,9 @@ def test_home_assistant_metadata_matches_release_image():
     assert config["slug"] == "tuya_local_key"
     assert config["version"] == "4.1"
     assert config["url"] == repository["url"]
-    assert config["image"] == "ghcr.io/muhammadusamataj/mylocal-devices-tuya"
+    # The Supervisor builds from tuya_local_key/Dockerfile; no GHCR image is
+    # required, so Actions billing cannot block installation.
+    assert "image" not in config
     assert "legacy" not in config
     assert config["arch"] == ["aarch64", "amd64"]
     assert config["ingress"] is True
@@ -89,12 +91,25 @@ def test_dockerfile_has_home_assistant_labels_and_runtime_contract():
     assert "waitress-serve --listen=0.0.0.0:${PORT:-8000}" in dockerfile
 
 
-def test_github_workflow_runs_tests_and_publishes_main_and_tags():
+def test_home_assistant_addon_has_its_own_build_context():
+    addon = ROOT / "tuya_local_key"
+    dockerfile = (addon / "Dockerfile").read_text()
+
+    assert "COPY app/requirements-web.txt" in dockerfile
+    assert "COPY app/ ./" in dockerfile
+    assert (addon / "app" / "local_control.py").is_file()
+    assert (addon / "app" / "templates" / "local_control.html").is_file()
+    assert (addon / "app" / "static" / "css" / "base.css").is_file()
+    assert (addon / "app" / "tuya_local_key" / "icon.png").is_file()
+
+
+def test_github_workflow_is_optional_for_tagged_releases():
     workflow = yaml.safe_load(
         (ROOT / ".github" / "workflows" / "docker-publish.yml").read_text()
     )
 
-    assert workflow[True]["push"] == {"branches": ["main"], "tags": ["v*"]}
+    assert workflow[True]["push"] == {"tags": ["v*"]}
+    assert "branches" not in workflow[True]["push"]
     assert workflow[True]["pull_request"] == {"branches": ["main"]}
 
     text = (ROOT / ".github" / "workflows" / "docker-publish.yml").read_text()

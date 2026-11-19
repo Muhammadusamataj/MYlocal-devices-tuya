@@ -1,6 +1,7 @@
 services:
   tuya-local-key:
-    image: ghcr.io/muhammadusamataj/mylocal-devices-tuya:latest
+    build: .
+    image: mylocal-devices-tuya:local
     container_name: tuya-local-key
     ports:
       - "8000:8000"

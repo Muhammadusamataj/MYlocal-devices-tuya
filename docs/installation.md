@@ -4,7 +4,7 @@ Choose Home Assistant, Docker, or a local source checkout. For terminal use, see
 
 ## Home Assistant App
 
-Home Assistant OS users can install Tuya Local Key as a Home Assistant app.
+Home Assistant OS users can install MY Local Devices Tuya as a Home Assistant add-on. The Supervisor builds it locally from the committed `tuya_local_key/app/` sources; no registry image is required.
 
 1. Go to Settings > Apps > App Store.
 2. Open the menu in the top-right and choose Repositories.
@@ -14,18 +14,18 @@ Home Assistant OS users can install Tuya Local Key as a Home Assistant app.
 https://github.com/Muhammadusamataj/MYlocal-devices-tuya
 ```
 
-4. Install Tuya Local Key from the app store and open it from the sidebar.
+4. Install **MY Local Devices Tuya** from the app store and open it from the sidebar. It opens on the Devices screen.
 
-The app uses Home Assistant ingress by default. The direct `8000/tcp` port is disabled unless you explicitly enable it in the app network settings.
+The app uses Home Assistant ingress by default. The direct `8000/tcp` port is disabled unless you explicitly enable it in the app network settings. For remote access, install the Tailscale or WireGuard add-on and open this add-on through the Home Assistant sidebar.
 
 ## Web UI with Docker Compose
 
-The included [docker-compose.yml](../docker-compose.yml) runs the published GHCR image and stores the cached login session and device list in a named Docker volume.
+The included [docker-compose.yml](../docker-compose.yml) builds the image from this repository and stores the cached login session and device list in a named Docker volume.
 
 Start the app:
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
 Open the web UI:
@@ -38,17 +38,11 @@ If you prefer the `tuyaSmart` QR scheme instead of `smartlife`, edit `QR_SCHEME`
 
 ## Web UI with Docker
 
-Run the published image directly:
-
-```bash
-docker run -d --name tuya-local-key -p 8000:8000 -v tuya-session:/data ghcr.io/muhammadusamataj/mylocal-devices-tuya:latest
-```
-
 Build and run locally:
 
 ```bash
-docker build -t tuya-local-key .
-docker run -d --name tuya-local-key -p 8000:8000 -v tuya-session:/data tuya-local-key
+docker build -t mylocal-devices-tuya .
+docker run -d --name mylocal-devices-tuya -p 8000:8000 -v mylocal-session:/data mylocal-devices-tuya
 ```
 
 Then open `http://localhost:8000`.

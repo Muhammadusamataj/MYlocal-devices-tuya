@@ -6,7 +6,8 @@ url: https://github.com/Muhammadusamataj/MYlocal-devices-tuya
 arch:
   - aarch64
   - amd64
-image: ghcr.io/muhammadusamataj/mylocal-devices-tuya
+# No `image`: Home Assistant builds this add-on locally from the committed
+# `tuya_local_key/app/` source. Run `python tools/sync_addon.py` after edits.
 init: false
 startup: application
 boot: manual

@@ -1,4 +1,3 @@
-[![Build status](https://img.shields.io/github/actions/workflow/status/Muhammadusamataj/MYlocal-devices-tuya/docker-publish.yml?style=for-the-badge&logo=githubactions&logoColor=white&label=build)](https://github.com/Muhammadusamataj/MYlocal-devices-tuya/actions/workflows/docker-publish.yml)
 [![Docker image downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FMuhammadusamataj%2FMYlocal-devices-tuya%2Fbadges%2Fdownloads.json&style=for-the-badge&logo=docker&logoColor=white)](https://github.com/Muhammadusamataj/MYlocal-devices-tuya/pkgs/container/mylocal-devices-tuya)
 
 # MY Local Devices Tuya
@@ -33,26 +32,20 @@ A fork of **Tuya Local Key** with a devices-first local control screen. Log in o
    ```
 
 3. Install **MY Local Devices Tuya**, start it, and open it from the sidebar. It opens directly on the **Devices** screen.
+   The add-on builds from source inside Home Assistant (`tuya_local_key/Dockerfile`), so no GHCR image or GitHub Actions run is needed.
 4. If keys are not loaded yet, open **Settings → Setup / Smart Life login** in the drawer.
-5. For remote access, install the **Tailscale** (or WireGuard) add-on in Home Assistant and open this add-on from the HA sidebar. Ingress handles authentication; the VPN handle encryption. No router setup is needed.
+5. For remote access, install the **Tailscale** (or WireGuard) add-on in Home Assistant and open this add-on from the HA sidebar. Ingress handles authentication; the VPN handles encryption. No router setup is needed.
 
 [![Add repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FMuhammadusamataj%2FMYlocal-devices-tuya)
 
-The GitHub Actions workflow publishes the multi-arch image to:
-
-```text
-ghcr.io/muhammadusamataj/mylocal-devices-tuya:latest
-```
-
-After the first workflow run, make the GHCR package **public** so Home Assistant can pull it.
+After editing the web app, run `python tools/sync_addon.py` and commit the generated `tuya_local_key/app/` folder so the add-on build always contains the latest code.
 
 ## Docker
 
+Build from this repository (same source the HA add-on uses):
+
 ```bash
-docker run -d --name mylocal-devices-tuya \
-  -p 8000:8000 \
-  -v mylocal-session:/data \
-  ghcr.io/muhammadusamataj/mylocal-devices-tuya:latest
+docker compose up -d --build
 ```
 
 Open <http://localhost:8000/local>. For access beyond localhost set both `AUTH_USERNAME` and `AUTH_PASSWORD`; see [configuration](docs/configuration.md#security).
