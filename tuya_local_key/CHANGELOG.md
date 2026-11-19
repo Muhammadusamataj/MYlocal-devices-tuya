@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.3
+- Fixed **Auto scan / Scan network** returning HTTP 404 in Home Assistant ingress: device-page API calls now use ingress-relative URLs.
+- **Full Changelog**: https://github.com/Muhammadusamataj/MYlocal-devices-tuya/compare/v4.2...v4.3
+
 ## 4.2
 - Fixed the Home Assistant add-on build: web dependencies are now fully self-contained, so the image builds even from a cached older Dockerfile.
 - The devices screen no longer refreshes repeatedly while reconnecting, and the saved ON/OFF switch stays visible.

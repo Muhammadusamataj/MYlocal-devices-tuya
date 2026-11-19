@@ -16,7 +16,7 @@ def test_home_assistant_metadata_builds_from_source():
     assert repository["url"] == "https://github.com/Muhammadusamataj/MYlocal-devices-tuya"
     assert config["name"] == "MY Local Devices Tuya"
     assert config["slug"] == "tuya_local_key"
-    assert config["version"] == "4.2"
+    assert config["version"] == "4.3"
     assert config["url"] == repository["url"]
     # The Supervisor builds from tuya_local_key/Dockerfile; no GHCR image is
     # required, so Actions billing cannot block installation.
@@ -89,6 +89,15 @@ def test_dockerfile_has_home_assistant_labels_and_runtime_contract():
     assert "COPY static ./static" in dockerfile
     assert 'VOLUME ["/data"]' in dockerfile
     assert "waitress-serve --listen=0.0.0.0:${PORT:-8000}" in dockerfile
+
+
+def test_local_control_api_calls_work_behind_home_assistant_ingress():
+    page = (ROOT / "templates" / "local_control.html").read_text()
+
+    # Absolute /api/... URLs resolve against Home Assistant, not the add-on,
+    # and show up as HTTP 404 when "Auto scan" is pressed in ingress.
+    assert "url.replace(/^\\/+/, '')" in page
+    assert "await fetch(url, options)" not in page
 
 
 def test_home_assistant_addon_has_its_own_build_context():

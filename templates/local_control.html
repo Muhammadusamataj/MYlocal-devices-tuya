@@ -311,7 +311,10 @@ function toast(message) {
   toast.t = setTimeout(() => toastEl.classList.remove('show'), 2600);
 }
 async function api(url, options) {
-  const response = await fetch(url, options);
+  // Home Assistant ingress serves this page under /api/hassio_ingress/<token>/.
+  // A root-relative /api/... URL would hit Home Assistant itself and return 404,
+  // so use a relative URL like the rest of the app (static/js/shared/api.js).
+  const response = await fetch(url.replace(/^\/+/, ''), options);
   let data = {};
   try { data = await response.json(); } catch (e) {}
   if (!response.ok || data.error) throw new Error(data.error || ('HTTP ' + response.status));
