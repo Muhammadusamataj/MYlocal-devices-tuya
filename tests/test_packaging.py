@@ -17,7 +17,7 @@ def test_home_assistant_metadata_builds_from_source():
     assert repository["url"] == "https://github.com/Muhammadusamataj/MYlocal-devices-tuya"
     assert config["name"] == "MY Local Devices Tuya"
     assert config["slug"] == "tuya_local_key"
-    assert config["version"] == "4.5"
+    assert config["version"] == "4.6"
     assert config["url"] == repository["url"]
     # The Supervisor builds from tuya_local_key/Dockerfile; no GHCR image is
     # required, so Actions billing cannot block installation.
@@ -99,6 +99,16 @@ def test_local_control_api_calls_work_behind_home_assistant_ingress():
     # and show up as HTTP 404 when "Auto scan" is pressed in ingress.
     assert "url.replace(/^\\/+/, '')" in page
     assert "await fetch(url, options)" not in page
+
+
+def test_auto_refresh_does_not_rebuild_device_cards():
+    page = (ROOT / "templates" / "local_control.html").read_text()
+
+    # On phones the 10s/30s poll used to clear .tile-body every time, which
+    # looked like the whole page was refreshing and could swallow a switch tap.
+    assert "function updatePoints(" in page
+    assert "if (silent && updatePoints(" in page
+    assert "refresh(card.dataset.id, card, true)" in page
 
 
 def test_home_assistant_addon_has_its_own_build_context():

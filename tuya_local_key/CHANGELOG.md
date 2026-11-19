@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.6
+- Fixed the devices screen flickering/appearing to refresh on phones and in Home Assistant ingress. Auto refresh now updates values in place and polls more slowly on mobile.
+- **Full Changelog**: https://github.com/Muhammadusamataj/MYlocal-devices-tuya/compare/v4.5...v4.6
+
 ## 4.5
 - Custom integration now creates sensor entities for power/energy DPs that appear in live LAN reads but are missing from the cached Tuya DP spec.
 - **Full Changelog**: https://github.com/Muhammadusamataj/MYlocal-devices-tuya/compare/v4.4...v4.5
