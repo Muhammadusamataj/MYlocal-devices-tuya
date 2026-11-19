@@ -95,8 +95,9 @@ def test_home_assistant_addon_has_its_own_build_context():
     addon = ROOT / "tuya_local_key"
     dockerfile = (addon / "Dockerfile").read_text()
 
-    assert "COPY app/requirements-web.txt" in dockerfile
+    assert "COPY app/requirements.txt app/requirements-web.txt" in dockerfile
     assert "COPY app/ ./" in dockerfile
+    assert (addon / "app" / "requirements.txt").is_file()
     assert (addon / "app" / "local_control.py").is_file()
     assert (addon / "app" / "templates" / "local_control.html").is_file()
     assert (addon / "app" / "static" / "css" / "base.css").is_file()

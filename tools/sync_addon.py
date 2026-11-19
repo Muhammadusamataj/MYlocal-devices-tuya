@@ -32,6 +32,7 @@ PY_FILES = [
 ]
 EXTRA_FILES = [
     "pyproject.toml",
+    "requirements.txt",
     "requirements-web.txt",
     "LICENSE",
     "NOTICE",

@@ -18,7 +18,7 @@ WORKDIR /app
 
 # Dependencies first for better layer caching. The pinned wheels support
 # aarch64 and amd64, so no build toolchain is needed on slim.
-COPY app/requirements-web.txt ./requirements-web.txt
+COPY app/requirements.txt app/requirements-web.txt ./
 RUN pip install -r requirements-web.txt
 
 # `tools/sync_addon.py` keeps this copy in sync with the repository root.
