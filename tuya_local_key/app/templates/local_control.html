@@ -298,6 +298,7 @@ const toastEl = document.getElementById('toast');
 let timer = null;
 let scanWatchTimer = null;
 let loading = false;
+let ensureCooldownUntil = 0;
 
 function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -340,7 +341,9 @@ function watchReconnect() {
       if (!(data.repair || {}).running) {
         clearInterval(scanWatchTimer);
         scanWatchTimer = null;
-        await load();
+        // `true` = do not start another reconnect cycle. Without this the page
+        // reloaded every 1.2s for devices that stayed offline.
+        await load(true);
       }
     } catch (error) {
       clearInterval(scanWatchTimer);
@@ -605,6 +608,27 @@ function renderDevice(device) {
     '<div class="tile-foot"><span class="ip">' + (device.reachable ? esc(device.ip) : 'no ip') + '</span>' +
     '<button class="refresh" title="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg></button></div>';
   card.querySelector('.refresh').onclick = () => refresh(device.id, card);
+
+  // Show the real ON/OFF switch immediately from the saved DP list. Live
+  // values replace it in renderPoints(); if a read never arrives the user
+  // still has the switch instead of an empty "Offline" card.
+  if (device.reachable) {
+    const fallback = primaryPoint(device.points || []);
+    if (fallback && isBool(fallback)) {
+      const body = card.querySelector('.tile-body');
+      body.innerHTML = '';
+      const row = document.createElement('div');
+      row.className = 'primary-row';
+      const label = document.createElement('div');
+      label.className = 'primary-label';
+      const value = fallback.cloud_value ?? fallback.value;
+      label.innerHTML = '<div class="code">' + esc(fallback.code) + '</div>' +
+        '<div class="state' + (value === true || value === 1 || value === 'true' ? ' on' : '') + '">' +
+        esc(currentText(fallback, value)) + '</div>';
+      row.append(label, renderSwitch(device.id, fallback, value, card));
+      body.appendChild(row);
+    }
+  }
   return card;
 }
 
@@ -708,7 +732,7 @@ function renderIpList(devices) {
   }
 }
 
-async function load() {
+async function load(skipEnsure = false) {
   if (loading) return;
   loading = true;
   try {
@@ -732,8 +756,13 @@ async function load() {
     // Pehli baar IP save ho gaya to bas usi se chalao. Sirf tab reconnect karein
     // jab device jawab na de — scan button dabane ki zarurat nahi.
     const repair = data.repair || {};
-    if (repair.running || (hasMissingIp(data) && data.subnet_hint)) {
-      if (!repair.running) {
+    const canEnsure = !skipEnsure && Date.now() >= ensureCooldownUntil;
+    if (repair.running || (hasMissingIp(data) && data.subnet_hint && canEnsure)) {
+      if (!repair.running && canEnsure) {
+        // One silent attempt per minute from the browser. The server has its
+        // own backoff too; this stops a stuck/offline device from reloading
+        // the whole screen again and again.
+        ensureCooldownUntil = Date.now() + 60000;
         try { await api('/api/local/ensure', {method: 'POST'}); } catch (e) {}
       }
       watchReconnect();
