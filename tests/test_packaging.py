@@ -16,7 +16,7 @@ def test_home_assistant_metadata_builds_from_source():
     assert repository["url"] == "https://github.com/Muhammadusamataj/MYlocal-devices-tuya"
     assert config["name"] == "MY Local Devices Tuya"
     assert config["slug"] == "tuya_local_key"
-    assert config["version"] == "4.1"
+    assert config["version"] == "4.2"
     assert config["url"] == repository["url"]
     # The Supervisor builds from tuya_local_key/Dockerfile; no GHCR image is
     # required, so Actions billing cannot block installation.
@@ -98,6 +98,8 @@ def test_home_assistant_addon_has_its_own_build_context():
     assert "COPY app/requirements.txt app/requirements-web.txt" in dockerfile
     assert "COPY app/ ./" in dockerfile
     assert (addon / "app" / "requirements.txt").is_file()
+    # Must work even with an older cached Dockerfile that copies only this file.
+    assert "-r " not in (addon / "app" / "requirements-web.txt").read_text()
     assert (addon / "app" / "local_control.py").is_file()
     assert (addon / "app" / "templates" / "local_control.html").is_file()
     assert (addon / "app" / "static" / "css" / "base.css").is_file()

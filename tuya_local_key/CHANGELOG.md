@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.2
+- Fixed the Home Assistant add-on build: web dependencies are now fully self-contained, so the image builds even from a cached older Dockerfile.
+- The devices screen no longer refreshes repeatedly while reconnecting, and the saved ON/OFF switch stays visible.
+- **Full Changelog**: https://github.com/Muhammadusamataj/MYlocal-devices-tuya/compare/v4.1...v4.2
+
 ## 4.1
 - Updated TinyTuya to 1.21.1 from 1.20.
 - CLI and source installations now require Python 3.10 or newer.
