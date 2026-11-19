@@ -95,3 +95,40 @@ def point_value(device: dict, point: dict):
     if dp in live:
         return live[dp]
     return point.get("cloud_value")
+
+
+def merge_live_points(points: list[dict], values: list[dict]) -> list[dict]:
+    """Add DPs that only appear in the live read to the cached DP spec.
+
+    Tuya often omits power/energy DPs from the cached `local_strategy`, but the
+    local status read still returns their values. Creating a synthetic point
+    for those DPs lets the sensor platform expose them instead of dropping
+    them silently.
+    """
+    merged = [dict(point) for point in points if isinstance(point, dict)]
+    by_dp = {str(point.get("dp") or ""): point for point in merged}
+
+    for item in values:
+        if not isinstance(item, dict):
+            continue
+        dp = str(item.get("dp") or "").strip()
+        if not dp:
+            continue
+        value = item.get("value")
+        point = by_dp.get(dp)
+        if point is None:
+            point = {
+                "dp": dp,
+                "code": str(item.get("code") or f"DP {dp}"),
+                "type": str(item.get("type") or ""),
+            }
+            by_dp[dp] = point
+            merged.append(point)
+        elif not point.get("type") and item.get("type"):
+            point["type"] = item["type"]
+        # The live value wins; point_type() can infer the DP type from it when
+        # the cached spec has no type at all.
+        point["cloud_value"] = value
+        point["value"] = value
+
+    return merged

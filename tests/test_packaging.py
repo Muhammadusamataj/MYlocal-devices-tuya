@@ -17,7 +17,7 @@ def test_home_assistant_metadata_builds_from_source():
     assert repository["url"] == "https://github.com/Muhammadusamataj/MYlocal-devices-tuya"
     assert config["name"] == "MY Local Devices Tuya"
     assert config["slug"] == "tuya_local_key"
-    assert config["version"] == "4.4"
+    assert config["version"] == "4.5"
     assert config["url"] == repository["url"]
     # The Supervisor builds from tuya_local_key/Dockerfile; no GHCR image is
     # required, so Actions billing cannot block installation.

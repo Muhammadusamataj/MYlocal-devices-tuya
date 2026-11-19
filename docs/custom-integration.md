@@ -31,7 +31,9 @@ repository of type *Integration*, but copying the folder is enough.
 
 - `switch.*` — the real ON/OFF DP (`switch`, `switch_1`, `power`, etc.). The main
   toggle is named after the device; other boolean DPs use `Device <dp code>`.
-- `sensor.*` — numeric/string DPs such as power, current, energy, and enums.
+- `sensor.*` — numeric/string DPs such as power, current, energy, and enums. DPs that
+  appear only in the live LAN read are added as `sensor.<device> DP <number>` entities,
+  so readings are not lost when the cached Tuya DP spec is incomplete.
 
 Entity state refreshes every 20 seconds from the add-on's local LAN cache. Commands
 are sent immediately to the device over LAN.

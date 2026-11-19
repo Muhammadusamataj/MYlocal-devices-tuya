@@ -19,6 +19,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .api import ApiError, api_request
 from .const import CONF_ADDON_URL, DEFAULT_SCAN_INTERVAL, DOMAIN
+from .pure import merge_live_points
 
 _LOGGER = logging.getLogger(__name__)
 PLATFORMS = ["switch", "sensor"]
@@ -59,12 +60,15 @@ class MyLocalCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         results = await asyncio.gather(*(read(device) for device in devices))
         for device, result in zip(devices, results):
-            live: dict[str, Any] = {}
+            values: list[dict] = []
             if result.get("status") == "ok" and isinstance(result.get("values"), list):
-                for point in result["values"]:
-                    if isinstance(point, dict) and point.get("dp") is not None:
-                        live[str(point["dp"])] = point.get("value")
-            device["live_values"] = live
+                values = [point for point in result["values"] if isinstance(point, dict)]
+            device["points"] = merge_live_points(device.get("points") or [], values)
+            device["live_values"] = {
+                str(point["dp"]): point.get("value")
+                for point in values
+                if point.get("dp") is not None
+            }
         return {"devices": devices}
 
 

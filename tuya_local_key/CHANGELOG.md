@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.5
+- Custom integration now creates sensor entities for power/energy DPs that appear in live LAN reads but are missing from the cached Tuya DP spec.
+- **Full Changelog**: https://github.com/Muhammadusamataj/MYlocal-devices-tuya/compare/v4.4...v4.5
+
 ## 4.4
 - Added an optional Home Assistant custom integration under `custom_components/mylocal_devices`, exposing saved devices as `switch`/`sensor` entities for automations and dashboards.
 - **Full Changelog**: https://github.com/Muhammadusamataj/MYlocal-devices-tuya/compare/v4.3...v4.4

@@ -44,6 +44,35 @@ def test_live_value_overrides_cached_cloud_value():
     assert pure.point_value({"points": [point]}, point) is False
 
 
+def test_live_power_dp_becomes_a_sensor_point_even_without_cached_spec():
+    cached = [
+        {"dp": "16", "code": "switch", "type": "boolean", "cloud_value": True},
+    ]
+    live = [
+        {"dp": "16", "code": "switch", "type": "boolean", "value": True},
+        {"dp": "18", "code": "18", "type": "", "value": 1234},
+        {"dp": "19", "code": "19", "type": "", "value": 56},
+    ]
+    merged = pure.merge_live_points(cached, live)
+
+    assert [point["dp"] for point in merged] == ["16", "18", "19"]
+    power = merged[1]
+    assert power["code"] == "18"
+    assert pure.is_bool_point(power) is False
+    assert pure.point_type(power) == "integer"
+    assert pure.point_value({"live_values": {"18": 1234}}, power) == 1234
+    assert merged[0]["cloud_value"] is True
+
+
+def test_live_value_can_upgrade_a_cached_point_without_a_type():
+    cached = [{"dp": "18", "code": "energy", "cloud_value": None}]
+    merged = pure.merge_live_points(cached, [{"dp": "18", "value": 9.5}])
+
+    assert merged[0]["cloud_value"] == 9.5
+    assert pure.point_type(merged[0]) == ""  # float inference is not needed for a sensor
+    assert pure.is_bool_point(merged[0]) is False
+
+
 def test_custom_repository_slug_prefix_is_found():
     addons = [
         {"slug": "core_ssh", "name": "Terminal & SSH"},
