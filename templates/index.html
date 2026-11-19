@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tuya Local Key</title>
+<link rel="icon" href="icon.png" type="image/png">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="stylesheet" href="static/css/base.css">
+<link rel="stylesheet" href="static/css/header.css">
+<link rel="stylesheet" href="static/css/footer.css">
+<link rel="stylesheet" href="static/css/auth.css">
+<link rel="stylesheet" href="static/css/devices.css">
+<link rel="stylesheet" href="static/css/panel.css">
+<link rel="stylesheet" href="static/css/setup.css">
+<link rel="stylesheet" href="static/css/network.css">
+<link rel="stylesheet" href="static/css/troubleshoot.css">
+<link rel="stylesheet" href="static/css/values.css">
+<link rel="stylesheet" href="static/css/utilities.css">
+</head>
+<body>
+{% include "partials/header.html" %}
+<main>
+  <div id="banner" class="banner hidden"></div>
+  {% include "partials/auth.html" %}
+  {% include "partials/devices.html" %}
+</main>
+{% include "partials/footer.html" %}
+{% if check_for_updates %}{% include "partials/updates.html" %}{% endif %}
+{% include "partials/logout.html" %}
+{% include "partials/panel.html" %}
+<script id="app-config" type="application/json">{{ {"gatewayCategories": gateway_categories, "checkForUpdates": check_for_updates} | tojson }}</script>
+<script type="module" src="static/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.example.tuyalocalkey'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.example.tuyalocalkey'
+        minSdk 23
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+        }
+        release {
+            minifyEnabled false
+            // Debug signing keeps `assembleRelease` usable without a keystore.
+            // Replace this with your own signing config before publishing.
+            signingConfig signingConfigs.debug
+        }
+    }
+}

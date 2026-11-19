@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Local Control - Tuya Local Key</title>
+<link rel="icon" href="icon.png" type="image/png">
+<link rel="stylesheet" href="static/css/base.css">
+<style>
+  :root {
+    --radius: 18px; --shadow: 0 10px 30px rgba(10, 20, 40, .07);
+    --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); }
+  button, input, select { font: inherit; }
+
+  /* Premium app bar */
+  .appbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; background: color-mix(in srgb, var(--card) 88%, transparent);
+    backdrop-filter: blur(14px); border-bottom: 1px solid var(--border); }
+  .brand { display: flex; align-items: center; gap: 9px; font-weight: 750; font-size: 16px; letter-spacing: -.2px; }
+  .brand .logo { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #9b5cff));
+    color: #fff; box-shadow: 0 5px 14px color-mix(in srgb, var(--accent) 35%, transparent); }
+  .brand .logo svg { width: 17px; height: 17px; }
+  .brand .logo img { width: 22px; height: 22px; border-radius: 7px; display: block; }
+  .appbar .spacer { flex: 1; }
+  .search { position: relative; flex: 1; max-width: 380px; }
+  .search input { width: 100%; padding: 10px 12px 10px 36px; border-radius: 12px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--fg); font-size: 14px; outline: none; }
+  .search input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--muted); }
+  .icon-btn { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; padding: 0;
+    background: var(--card); border: 1px solid var(--border); color: var(--fg); cursor: pointer; transition: .15s; }
+  .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .icon-btn svg { width: 19px; height: 19px; }
+  .icon-btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+
+  main { max-width: 1120px; margin: 0 auto; padding: 18px 16px 70px; }
+  .headline { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 4px 0 16px; }
+  .headline h1 { font-size: 21px; margin: 0; letter-spacing: -.4px; }
+  .headline p { margin: 0; color: var(--muted); font-size: 13px; }
+  .headline .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); display: inline-block; margin-right: 5px; }
+
+  /* Device tiles */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 14px; }
+  .tile { position: relative; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px; box-shadow: var(--shadow); transition: transform .16s, box-shadow .16s, border-color .16s;
+    overflow: hidden; }
+  .tile:hover { transform: translateY(-2px); box-shadow: 0 14px 38px rgba(10, 20, 40, .11); }
+  .tile::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--ok); opacity: .85; }
+  .tile.offline::before { background: var(--off); }
+  .tile.offline { opacity: .78; }
+  .tile-head { display: flex; gap: 12px; align-items: flex-start; }
+  .tile-icon { width: 44px; height: 44px; border-radius: 14px; flex: 0 0 auto; display: grid; place-items: center;
+    background: var(--accent-soft); color: var(--accent); }
+  .tile-icon svg { width: 23px; height: 23px; }
+  .tile-icon.tone-breaker { background: rgba(124, 58, 237, .13); color: #7c3aed; }
+  .tile-icon.tone-meter { background: rgba(14, 165, 233, .13); color: #0284c7; }
+  .tile-icon.tone-light { background: rgba(245, 158, 11, .15); color: #d97706; }
+  .tile-icon.tone-motor, .tile-icon.tone-fan { background: rgba(16, 185, 129, .14); color: #059669; }
+  .tile-icon.tone-water { background: rgba(37, 99, 235, .14); color: #2563eb; }
+  .tile-icon.tone-heater { background: rgba(244, 63, 94, .13); color: #e11d48; }
+  .tile-icon.tone-curtain { background: rgba(168, 85, 247, .13); color: #9333ea; }
+  .tile-icon.tone-camera, .tile-icon.tone-lock { background: rgba(100, 116, 139, .14); color: #475569; }
+  .tile-icon.tone-plug { background: var(--accent-soft); color: var(--accent); }
+  .tile-title { min-width: 0; flex: 1; }
+  .tile-title h2 { margin: 0; font-size: 15px; font-weight: 700; overflow-wrap: anywhere; letter-spacing: -.15px; }
+  .tile-title p { margin: 2px 0 0; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+  .status { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 650;
+    padding: 3px 8px; border-radius: 999px; background: color-mix(in srgb, var(--ok) 12%, transparent); color: var(--ok); }
+  .status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .tile.offline .status { background: color-mix(in srgb, var(--off) 12%, transparent); color: var(--off); }
+  .tile-body { margin-top: 15px; }
+  .primary-row { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 12px 13px; border-radius: 14px; background: var(--bg); }
+  .primary-label { min-width: 0; }
+  .primary-label .code { font-size: 13px; font-weight: 650; }
+  .primary-label .state { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .primary-label .state.on { color: var(--ok); font-weight: 700; }
+
+  /* Big premium switch */
+  .switch { position: relative; display: inline-flex; width: 58px; height: 32px; flex: 0 0 auto; cursor: pointer; }
+  .switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .switch .track { width: 58px; height: 32px; border-radius: 999px; background: var(--border);
+    transition: background .2s ease; box-shadow: inset 0 1px 3px rgba(0,0,0,.12); }
+  .switch .thumb { position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%;
+    background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.22); transition: transform .2s cubic-bezier(.2,.9,.3,1.2); }
+  .switch input:checked + .track { background: var(--accent); }
+  .switch input:checked + .track .thumb { transform: translateX(26px); }
+  .switch input:disabled + .track { opacity: .55; }
+
+  .reading { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .chip { font-size: 12px; font-weight: 650; padding: 5px 9px; border-radius: 9px; background: var(--bg); color: var(--fg); }
+  .chip small { color: var(--muted); font-weight: 500; }
+
+  details.more { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px; }
+  details.more summary { cursor: pointer; font-size: 12px; font-weight: 650; color: var(--muted); list-style: none; padding: 4px 0; }
+  details.more summary::-webkit-details-marker { display: none; }
+  details.more summary::after { content: "⌄"; float: right; transition: transform .2s; }
+  details.more[open] summary::after { transform: rotate(180deg); }
+  .point { padding: 10px 0 2px; border-top: 1px dashed var(--border); }
+  .point:first-child { border-top: 0; }
+  .point-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .point-head .code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-weight: 650; }
+  .point-head .type { font-size: 11px; color: var(--muted); }
+  .point .value { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .point .control { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; margin-top: 7px; }
+  .point .control input[type=range] { flex: 1; min-width: 90px; accent-color: var(--accent); }
+  .point .control input[type=number], .point .control input[type=text], .point .control select {
+    padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--fg); font-size: 12px; }
+  .point .control input[type=text] { flex: 1; min-width: 110px; }
+  .point .control button { padding: 6px 10px; font-size: 12px; border-radius: 8px; }
+
+  .tile-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px;
+    padding-top: 10px; border-top: 1px solid var(--border); }
+  .tile-foot .ip { font-size: 11px; color: var(--muted); font-family: ui-monospace, Menlo, monospace; }
+  .tile-foot .refresh { border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: 4px; border-radius: 8px; }
+  .tile-foot .refresh:hover { background: var(--bg); color: var(--accent); }
+  .tile-foot .refresh svg { width: 16px; height: 16px; }
+
+  /* Empty state */
+  .empty { max-width: 560px; margin: 8vh auto 0; text-align: center; padding: 34px 26px; background: var(--card);
+    border: 1px solid var(--border); border-radius: 24px; box-shadow: var(--shadow); }
+  .empty .art { width: 84px; height: 84px; margin: 0 auto 18px; border-radius: 26px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--accent-soft), color-mix(in srgb, var(--accent) 4%, transparent)); color: var(--accent); }
+  .empty .art svg { width: 42px; height: 42px; }
+  .empty h2 { font-size: 20px; margin: 0 0 8px; letter-spacing: -.3px; }
+  .empty p { color: var(--muted); margin: 0 0 20px; font-size: 14px; line-height: 1.6; }
+  .empty .actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .btn { padding: 10px 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); color: var(--fg);
+    font-weight: 650; cursor: pointer; }
+  .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+
+  /* Settings drawer */
+  .scrim { position: fixed; inset: 0; background: rgba(5, 12, 25, .45); backdrop-filter: blur(2px); z-index: 40; opacity: 0;
+    pointer-events: none; transition: opacity .2s; }
+  .scrim.open { opacity: 1; pointer-events: auto; }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(420px, 100vw); z-index: 41; background: var(--card);
+    border-left: 1px solid var(--border); box-shadow: -14px 0 40px rgba(0,0,0,.18); transform: translateX(102%);
+    transition: transform .25s cubic-bezier(.2,.8,.2,1); display: flex; flex-direction: column; }
+  .drawer.open { transform: none; }
+  .drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid var(--border); }
+  .drawer-head h2 { margin: 0; font-size: 16px; }
+  .drawer-body { padding: 16px 18px 40px; overflow-y: auto; }
+  .group { margin-bottom: 22px; }
+  .group h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); margin: 0 0 10px; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .field input, .field select { width: 100%; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--fg); font-size: 13px; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .note { font-size: 12px; color: var(--muted); line-height: 1.55; background: var(--bg); padding: 10px 12px; border-radius: 10px; }
+  .network-line { font-size: 12px; color: var(--muted); margin: 0 0 8px; }
+  .scan-box { display: flex; gap: 6px; margin-top: 8px; }
+  .scan-box input { flex: 1; min-width: 0; padding: 8px 9px; border-radius: 9px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--fg); font-size: 12px; }
+  .ip-row { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .ip-row .name { flex: 1; min-width: 0; font-size: 12px; overflow-wrap: anywhere; }
+  .ip-row input { width: 118px; padding: 6px 7px; font-size: 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--fg); }
+  .ip-row button { padding: 6px 8px; font-size: 11px; border-radius: 8px; }
+  .danger { color: var(--off); border-color: var(--off); }
+  .switch-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; margin-bottom: 10px; }
+
+  #toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); max-width: min(420px, 90vw);
+    padding: 11px 16px; border-radius: 12px; background: var(--fg); color: var(--bg); font-size: 13px; font-weight: 600;
+    opacity: 0; transition: .22s; pointer-events: none; z-index: 60; box-shadow: 0 8px 24px rgba(0,0,0,.2); }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+  @media (max-width: 520px) {
+    .appbar { padding: 10px 12px; gap: 8px; }
+    .brand span { display: none; }
+    .headline { margin-top: 6px; }
+    main { padding: 12px 12px 80px; }
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <div class="brand">
+    <span class="logo"><img src="icon.png" alt="" aria-hidden="true"></span>
+    <span>Devices</span>
+  </div>
+  <div class="search" {% if not ready %}hidden{% endif %}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input type="search" id="deviceSearch" placeholder="Find device" aria-label="Find device">
+  </div>
+  <div class="spacer"></div>
+  <button class="icon-btn primary" id="addBtn" title="Add device" aria-label="Add device">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
+  <button class="icon-btn" id="settingsBtn" title="Settings" aria-label="Settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.56V21h-4v-.1a1.7 1.7 0 0 0-1-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06L4.2 17l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1H3v-4h.1a1.7 1.7 0 0 0 1.56-1 1.7 1.7 0 0 0-.34-1.87L4.2 7l2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.56V3h4v.1a1.7 1.7 0 0 0 1 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06L19.8 7l-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.56 1H21v4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+  </button>
+</header>
+
+<main>
+{% if not ready %}
+  <section class="empty">
+    <div class="art"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M9 8h6M9 12h6M9 16h3"/><circle cx="17" cy="16" r="1.4" fill="currentColor" stroke="none"/></svg></div>
+    <h2>Apne devices yahan control karein</h2>
+    <p>Agar aapke paas device ka <b>local key</b> hai, to abhi add karke ON/OFF button mil jayega — Smart Life QR scan ki zarurat nahi. Ya pehle login karke keys automatically la lein.</p>
+    <div class="actions">
+      <button class="btn primary" onclick="openDrawer('add')">+ Device add karein</button>
+      <a class="btn" href="./">Smart Life se login</a>
+    </div>
+  </section>
+{% else %}
+  <div class="headline">
+    <h1>Mere devices</h1>
+    <p><span class="dot"></span><span id="summary">Loading…</span></p>
+  </div>
+  <div id="devices" class="grid"></div>
+{% endif %}
+</main>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="Settings">
+  <div class="drawer-head">
+    <h2>Settings</h2>
+    <button class="icon-btn" id="closeDrawer" aria-label="Close">✕</button>
+  </div>
+  <div class="drawer-body">
+
+    <section class="group" id="addGroup">
+      <h3>Device add karein</h3>
+      <div class="note" style="margin-bottom:10px">Local key aur IP se device directly LAN par chalega. Cloud request nahi hoga.</div>
+      <form id="addForm">
+        <div class="field"><label>Device name</label><input id="devName" required placeholder="e.g. Living Room Plug" maxlength="60"></div>
+        <div class="field"><label>Device ID</label><input id="devId" required placeholder="Tuya device id" maxlength="64"></div>
+        <div class="field"><label>Local key (16–32 hex)</label><input id="devKey" required placeholder="0123456789abcdef" maxlength="32"></div>
+        <div class="field-row">
+          <div class="field"><label>IP address</label><input id="devIp" required placeholder="192.168.1.50"></div>
+          <div class="field"><label>Version</label><select id="devVersion"><option>3.4</option><option>3.3</option><option>3.2</option><option>3.1</option></select></div>
+        </div>
+        <div class="field"><label>ON/OFF DP (usually 1)</label><input id="devDp" value="1" inputmode="numeric"></div>
+        <button class="btn primary" type="submit" style="width:100%">Save device</button>
+      </form>
+    </section>
+
+    <section class="group">
+      <h3>Network &amp; scan</h3>
+      <p class="network-line" id="networkLine">Detected network: {{ subnet_hint or 'searching…' }}</p>
+      <button class="btn" id="scanBtn" style="width:100%">Auto scan network</button>
+      <span id="scanStatus" style="font-size:12px;color:var(--muted)"></span>
+      <details style="margin-top:10px">
+        <summary style="cursor:pointer;font-size:12px;color:var(--muted)">Manually set subnet</summary>
+        <div class="scan-box">
+          <input type="text" id="scanTargets" value="{{ subnet_hint }}" placeholder="192.168.1.0/24" aria-label="LAN subnet to scan">
+          <button class="btn" id="scanCustomBtn">Scan</button>
+        </div>
+      </details>
+    </section>
+
+    <section class="group">
+      <h3>Device IPs</h3>
+      <div id="ipList"><p class="note">Koi device nahi mila.</p></div>
+    </section>
+
+    <section class="group">
+      <h3>Behaviour</h3>
+      <div class="switch-line"><span>Auto refresh</span><label class="switch"><input type="checkbox" id="autoRefresh" checked><span class="track"><span class="thumb"></span></span></label></div>
+      <button class="btn" id="refreshAll" style="width:100%">Refresh all now</button>
+      <p class="note" style="margin-top:12px">
+        IP aur protocol ek baar save ho gaye to app unhi se chalata hai. Network badalne par khud hi thoda reconnect karta hai — baar baar scan karne ki zarurat nahi.
+      </p>
+    </section>
+
+    <section class="group">
+      <h3>Remote access</h3>
+      {% if home_assistant %}
+      <p class="note">Remote access ka best tareeka: Home Assistant me <b>Tailscale add-on</b> (ya WireGuard) chalayein aur is add-on ko <b>ingress</b> se kholein. HA auth + Tailscale dono milkar secure remote access dete hain — app ko directly internet par kholne ki zarurat nahi.</p>
+      {% elif tailscale_url %}
+      <p class="note">Direct Tailscale access enabled hai. Apne tailnet ke kisi bhi device par ye URL kholein:</p>
+      <p style="font-size:12px;word-break:break-all;margin:8px 0"><a href="{{ tailscale_url }}" style="color:var(--accent)">{{ tailscale_url }}</a></p>
+      {% else %}
+      <p class="note">Direct Tailscale binding default me band hai. Remote access ke liye Home Assistant add-on + Tailscale/WireGuard use karein. Desktop par chahin to <code>--tailscale</code> flag se direct binding on kar sakte hain.</p>
+      {% endif %}
+    </section>
+
+    <section class="group">
+      <h3>Setup (alag screen)</h3>
+      <p class="note" style="margin-bottom:10px">QR login, Smart Life device list aur advanced scan ab yahan alag hain. Roz ke liye yahi Devices screen khulti hai.</p>
+      <a class="btn" href="./" style="width:100%;display:block;text-align:center">Setup / Smart Life login →</a>
+    </section>
+
+  </div>
+</aside>
+
+<div id="toast"></div>
+
+<script>
+const devicesEl = document.getElementById('devices');
+const toastEl = document.getElementById('toast');
+let timer = null;
+let scanWatchTimer = null;
+let loading = false;
+
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function toast(message) {
+  if (!toastEl) return;
+  toastEl.textContent = message;
+  toastEl.classList.add('show');
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => toastEl.classList.remove('show'), 2600);
+}
+async function api(url, options) {
+  const response = await fetch(url, options);
+  let data = {};
+  try { data = await response.json(); } catch (e) {}
+  if (!response.ok || data.error) throw new Error(data.error || ('HTTP ' + response.status));
+  return data;
+}
+function hasMissingIp(data) {
+  return (data.devices || []).some(device => !device.reachable);
+}
+
+function repairLine(data) {
+  const repair = data.repair || {};
+  const summary = document.getElementById('summary');
+  if (!summary) return;
+  if (!repair.running) { summary.textContent = (data.devices || []).length + ' device(s)'; return; }
+  const swept = repair.swept ?? 0;
+  const total = repair.addresses ?? '';
+  summary.textContent = 'LAN reconnect… ' + (total !== '' ? swept + '/' + total + ' · ' : '') +
+    (data.devices || []).length + ' device(s)';
+}
+
+function watchReconnect() {
+  if (scanWatchTimer || !devicesEl) return;
+  scanWatchTimer = setInterval(async () => {
+    try {
+      const data = await api('/api/local/devices');
+      repairLine(data);
+      if (!(data.repair || {}).running) {
+        clearInterval(scanWatchTimer);
+        scanWatchTimer = null;
+        await load();
+      }
+    } catch (error) {
+      clearInterval(scanWatchTimer);
+      scanWatchTimer = null;
+    }
+  }, 1200);
+}
+
+function typeLabel(type) {
+  return ({bool:'Boolean', boolean:'Boolean', int:'Integer', integer:'Integer', value:'Integer',
+    enum:'Enum', string:'String', str:'String', json:'JSON', raw:'Raw'})[type] || type || 'Unknown';
+}
+function isBool(point) {
+  const type = String(point.type || '').toLowerCase();
+  if (['bool', 'boolean'].includes(type)) return true;
+  return !type && typeof point.value === 'boolean';
+}
+function currentText(point, value) {
+  if (typeof value === 'boolean') return value ? 'On' : 'Off';
+  if (value && typeof value === 'object') return JSON.stringify(value);
+  return String(value ?? '-');
+}
+function mainScore(point) {
+  if (!isBool(point)) return 90;
+  const code = String(point.code || '').toLowerCase();
+  // An exact "switch" / "switch_1" is the real main toggle. Codes such as
+  // "prepayment_switch" also contain "switch", so never rank them by substring.
+  if (/^(switch|switch_\d+|power|power_switch|relay|relay_\d+|onoff|on_off|main_switch)$/.test(code)) return 0;
+  if (/^(switch|power|relay)_\d+$/.test(code)) return 1;
+  if (/prepay|prepayment|credit|balance|energy|child_lock|leak|test|alarm|fault|online/.test(code)) return 80;
+  if (/switch|power|relay|onoff|on_off/.test(code)) return 20;
+  return 40;
+}
+function primaryPoint(points) {
+  let best = null;
+  let bestScore = Infinity;
+  for (const point of points) {
+    const score = mainScore(point);
+    if (score < bestScore) { best = point; bestScore = score; }
+  }
+  return best;
+}
+function controlId(deviceId, dp) {
+  return 'opts-' + String(deviceId + '-' + dp).replace(/[^A-Za-z0-9_-]/g, '_');
+}
+
+function renderSwitch(deviceId, point, value, card) {
+  const on = value === true || value === 'true' || value === 1 || value === '1';
+  const label = document.createElement('label');
+  label.className = 'switch';
+  label.innerHTML = '<input type="checkbox" ' + (on ? 'checked' : '') + ' aria-label="Toggle ' + esc(point.code) + '">' +
+                    '<span class="track"><span class="thumb"></span></span>';
+  const input = label.querySelector('input');
+  input.onchange = async () => {
+    const next = input.checked;
+    input.disabled = true;
+    try {
+      await api('/api/local/command', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({device_id: deviceId, dp: point.dp, value: next})
+      });
+      toast(point.code + ' → ' + (next ? 'On' : 'Off'));
+      await refresh(deviceId, card);
+    } catch (error) {
+      input.checked = !next;
+      toast('Failed: ' + error.message);
+    }
+    input.disabled = false;
+  };
+  return label;
+}
+
+function renderControl(deviceId, point, value, card) {
+  const wrap = document.createElement('div');
+  wrap.className = 'control';
+  const dp = point.dp;
+  const send = async (next, button) => {
+    if (button) button.disabled = true;
+    try {
+      await api('/api/local/command', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({device_id: deviceId, dp: dp, value: next})
+      });
+      toast(point.code + ' updated');
+      await refresh(deviceId, card);
+    } catch (error) {
+      toast('Failed: ' + error.message);
+      if (button) button.disabled = false;
+    }
+  };
+  const type = String(point.type || '').toLowerCase();
+
+  if (isBool(point)) {
+    wrap.appendChild(renderSwitch(deviceId, point, value, card));
+  } else if (['int', 'integer', 'value'].includes(type)) {
+    const low = point.min ?? 0, high = point.max ?? 100, step = point.step ?? 1;
+    const range = document.createElement('input');
+    range.type = 'range'; range.min = low; range.max = high; range.step = step;
+    range.value = Number(value) || low;
+    const number = document.createElement('input');
+    number.type = 'number'; number.min = low; number.max = high; number.step = step;
+    number.value = range.value;
+    range.oninput = () => { number.value = range.value; };
+    number.onchange = () => { range.value = number.value; };
+    const button = document.createElement('button');
+    button.className = 'btn'; button.textContent = 'Set';
+    button.onclick = () => send(Number(number.value), button);
+    wrap.append(range, number, button);
+  } else if (type === 'enum' && (point.options || []).length) {
+    const options = point.options || [];
+    const button = document.createElement('button');
+    button.className = 'btn'; button.textContent = 'Set';
+    if (options.length > 8) {
+      const input = document.createElement('input');
+      input.type = 'text'; input.value = String(value ?? '');
+      input.setAttribute('list', controlId(deviceId, dp));
+      input.setAttribute('placeholder', options.slice(0, 3).join(' / '));
+      const list = document.createElement('datalist');
+      list.id = controlId(deviceId, dp);
+      for (const option of options) {
+        const item = document.createElement('option'); item.value = option; list.appendChild(item);
+      }
+      button.onclick = () => send(input.value.trim(), button);
+      wrap.append(input, button, list);
+    } else {
+      const select = document.createElement('select');
+      for (const option of options) {
+        const item = document.createElement('option'); item.value = option; item.textContent = option;
+        if (option === String(value)) item.selected = true;
+        select.appendChild(item);
+      }
+      button.onclick = () => send(select.value, button);
+      wrap.append(select, button);
+    }
+  } else {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = value && typeof value === 'object' ? JSON.stringify(value) : String(value ?? '');
+    const button = document.createElement('button');
+    button.className = 'btn'; button.textContent = 'Set';
+    button.onclick = () => send(input.value, button);
+    wrap.append(input, button);
+  }
+  return wrap;
+}
+
+function pointRow(deviceId, point, card) {
+  const row = document.createElement('div');
+  row.className = 'point';
+  const head = document.createElement('div');
+  head.className = 'point-head';
+  head.innerHTML = '<span class="code">' + esc(point.code) + '</span>' +
+                   '<span class="type">' + esc(typeLabel(point.type)) + ' · DP ' + esc(point.dp) + '</span>';
+  const state = document.createElement('div');
+  state.className = 'value';
+  state.textContent = currentText(point, point.value);
+  if (point.value === true || point.value === 'true' || point.value === 1) state.classList.add('on');
+  row.append(head, renderControl(deviceId, point, point.value, card), state);
+  return row;
+}
+
+function renderPoints(card, deviceId, values) {
+  const host = card.querySelector('.tile-body');
+  const previous = card.querySelector('details.more');
+  const keepOpen = !!(previous && previous.open);
+  host.innerHTML = '';
+  const points = (values || []).slice().sort((a, b) =>
+    mainScore(a) - mainScore(b) ||
+    String(a.code || '').localeCompare(String(b.code || '')) ||
+    Number(a.dp || 0) - Number(b.dp || 0));
+  if (!points.length) {
+    host.innerHTML = '<p class="note">Abhi koi live value nahi mili.</p>';
+    return;
+  }
+  const primary = primaryPoint(points);
+  const row = document.createElement('div');
+  row.className = 'primary-row';
+  const label = document.createElement('div');
+  label.className = 'primary-label';
+  label.innerHTML = '<div class="code">' + esc(primary.code) + '</div>' +
+                    '<div class="state' + (primary.value === true || primary.value === 1 || primary.value === 'true' ? ' on' : '') + '">' +
+                    esc(currentText(primary, primary.value)) + '</div>';
+  row.append(label, renderControl(deviceId, primary, primary.value, card));
+  host.appendChild(row);
+
+  const chips = points.filter(p => p !== primary && !isBool(p)).slice(0, 2);
+  if (chips.length) {
+    const box = document.createElement('div');
+    box.className = 'reading';
+    for (const p of chips) {
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.innerHTML = esc(currentText(p, p.value)) + ' <small>' + esc(p.code) + '</small>';
+      box.appendChild(chip);
+    }
+    host.appendChild(box);
+  }
+
+  const rest = points.filter(p => p !== primary && chips.indexOf(p) === -1);
+  if (rest.length) {
+    const details = document.createElement('details');
+    details.className = 'more';
+    details.open = keepOpen;
+    const summary = document.createElement('summary');
+    summary.textContent = 'More controls (' + rest.length + ')';
+    details.appendChild(summary);
+    for (const point of rest) details.appendChild(pointRow(deviceId, point, card));
+    host.appendChild(details);
+  }
+}
+
+function deviceKind(device) {
+  const text = [device.name, device.product_name, device.category,
+    (device.points || []).map(point => point.code).join(' ')].join(' ').toLowerCase();
+  if (/water.?tank|tank|pani/.test(text)) return 'water';
+  if (/bore|motor|pump/.test(text)) return 'motor';
+  if (/geyser|heater|heating|hot.?water/.test(text)) return 'heater';
+  if (/breaker|dlq|znjdq|circuit|mcb/.test(text)) return 'breaker';
+  if (/meter|energy|electricity|kwh/.test(text)) return 'meter';
+  if (/light|lamp|bulb|ceiling|dj/.test(text)) return 'light';
+  if (/fan|ventil/.test(text)) return 'fan';
+  if (/curtain|blind/.test(text)) return 'curtain';
+  if (/camera|cam/.test(text)) return 'camera';
+  if (/lock/.test(text)) return 'lock';
+  return 'plug';
+}
+
+function deviceIcon(device) {
+  const kind = deviceKind(device);
+  const shapes = {
+    breaker: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M8 12h2m4 0h2M10.5 9.5l4 5"/>',
+    meter: '<path d="M4 17a8 8 0 1 1 16 0"/><path d="m12 13 4-4"/><circle cx="12" cy="17" r="1.4"/>',
+    light: '<path d="M9 18h6m-5 3h4M12 3a6 6 0 0 0-3.5 10.8V16h7v-2.2A6 6 0 0 0 12 3Z"/>',
+    motor: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="1.7"/><path d="M12 10.2c1.9-3 4.5-2.6 4.7-1.2.2 1.4-2 2.4-4.7 1.2ZM13.8 12c3 1.9 2.6 4.5 1.2 4.7-1.4.2-2.4-2-1.2-4.7ZM12 13.8c-1.9 3-4.5 2.6-4.7 1.2-.2-1.4 2-2.4 4.7-1.2ZM10.2 12c-3-1.9-2.6-4.5-1.2-4.7 1.4-.2 2.4 2 1.2 4.7Z"/>',
+    water: '<path d="M12 3s6 6.4 6 11a6 6 0 0 1-12 0c0-4.6 6-11 6-11Z"/><path d="M9.5 14.5c.4 1.6 1.4 2.5 2.5 2.5"/>',
+    heater: '<path d="M12 3s5 4.5 5 9a5 5 0 0 1-10 0c0-2 1-3.7 2.5-5.2.2 2 1.2 2.8 2.2 2.9C11.4 7.8 12 5.6 12 3Z"/><path d="M8 20c1.2-1 2.7-1 4 0 1.3 1 2.8 1 4 0"/>',
+    curtain: '<path d="M4 4h16M6 4v16M18 4v16M6 20c2-1.2 3-3.5 3-6V9c0-2 1-3.5 3-5 2 1.5 3 3 3 5v5c0 2.5 1 4.8 3 6"/>',
+    camera: '<rect x="3" y="7" width="14" height="10" rx="2"/><path d="m17 11 4-2v6l-4-2"/>',
+    lock: '<rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+    plug: '<path d="M9 3v5m6-5v5M6 8h12v3a6 6 0 0 1-12 0V8Zm6 9v4"/>',
+  };
+  shapes.fan = shapes.motor;
+  return {
+    tone: kind,
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" ' +
+         'stroke-linecap="round" stroke-linejoin="round">' + shapes[kind] + '</svg>',
+  };
+}
+
+function renderDevice(device) {
+  const card = document.createElement('section');
+  card.className = 'tile' + (device.reachable ? '' : ' offline');
+  card.dataset.id = device.id;
+  card.dataset.search = [device.name, device.product_name, device.category, device.id].join(' ').toLowerCase();
+  const visual = deviceIcon(device);
+  card.innerHTML =
+    '<div class="tile-head"><div class="tile-icon tone-' + visual.tone + '">' + visual.svg + '</div>' +
+    '<div class="tile-title"><h2>' + esc(device.name) + '</h2><p>' + esc(device.product_name || device.category || device.id) + '</p></div>' +
+    '<span class="status">' + (device.reachable ? 'Online' : 'Offline') + '</span></div>' +
+    (device.reachable ? '' : '<p class="note" style="margin-top:12px">' + esc(device.issue_message || 'IP nahi mila') + '</p>') +
+    '<div class="tile-body"><p class="note">Reading live values…</p></div>' +
+    '<div class="tile-foot"><span class="ip">' + (device.reachable ? esc(device.ip) : 'no ip') + '</span>' +
+    '<button class="refresh" title="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg></button></div>';
+  card.querySelector('.refresh').onclick = () => refresh(device.id, card);
+  return card;
+}
+
+function applyFilter() {
+  const input = document.getElementById('deviceSearch');
+  if (!input || !devicesEl) return;
+  const query = input.value.trim().toLowerCase();
+  for (const card of devicesEl.querySelectorAll('.tile')) {
+    card.hidden = !!query && (card.dataset.search || '').indexOf(query) === -1;
+  }
+}
+
+async function refresh(deviceId, card) {
+  const host = card.querySelector('.tile-body');
+  if (!host) return;
+  host.innerHTML = '<p class="note"><span class="spinner"></span> Reading…</p>';
+  try {
+    const data = await api('/api/local/status?id=' + encodeURIComponent(deviceId));
+    if (data.status !== 'ok') {
+      host.innerHTML = '<p class="note">' + esc(data.error || data.status || 'no_values') + '</p>';
+      return;
+    }
+    renderPoints(card, deviceId, data.values || []);
+  } catch (error) {
+    host.innerHTML = '<p class="note">' + esc(error.message) + '</p>';
+  }
+}
+
+async function pollScan(statusEl) {
+  for (let i = 0; i < 90; i++) {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    let data;
+    try { data = await api('/api/lan/scan'); }
+    catch (error) { statusEl.textContent = ''; toast('Scan status: ' + error.message); return; }
+    const job = data.job;
+    if (!job) { statusEl.textContent = ''; return; }
+    if (job.state === 'running') {
+      const progress = job.progress || {};
+      statusEl.textContent = 'Scanning… ' + (progress.scanned ?? progress.checked ?? '');
+      continue;
+    }
+    statusEl.textContent = '';
+    if (job.state === 'done') { toast('Scan complete — devices updated'); await load(); }
+    else if (job.state === 'failed') toast('Scan failed: ' + (job.error || 'unknown'));
+    else toast('Scan ' + job.state);
+    return;
+  }
+  statusEl.textContent = '';
+  toast('Scan timeout');
+}
+
+async function startScan(targets) {
+  const statusEl = document.getElementById('scanStatus');
+  if (!statusEl) return;
+  statusEl.textContent = 'Starting scan…';
+  try {
+    await api('/api/lan/scan', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({targets: targets})
+    });
+    await pollScan(statusEl);
+  } catch (error) {
+    statusEl.textContent = '';
+    toast('Scan: ' + error.message);
+  }
+}
+
+function renderIpList(devices) {
+  const host = document.getElementById('ipList');
+  if (!host) return;
+  host.innerHTML = '';
+  if (!devices.length) { host.innerHTML = '<p class="note">Koi device nahi mila.</p>'; return; }
+  for (const device of devices) {
+    const row = document.createElement('div');
+    row.className = 'ip-row';
+    row.innerHTML = '<span class="name">' + esc(device.name) + '</span>' +
+      '<input type="text" value="' + esc(device.ip || device.ip_hint || '') + '" aria-label="IP for ' + esc(device.name) + '">' +
+      '<button class="btn">Check</button><button class="btn danger" title="Remove">✕</button>';
+    const input = row.querySelector('input');
+    row.querySelectorAll('button')[0].onclick = async () => {
+      const ip = input.value.trim();
+      if (!ip) { toast('IP daalein'); return; }
+      try {
+        await api('/api/lan/scan', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({device_id: device.id, ip: ip})
+        });
+        toast('Checking ' + ip);
+        pollScan(document.getElementById('scanStatus'));
+      } catch (error) { toast(error.message); }
+    };
+    row.querySelectorAll('button')[1].onclick = async () => {
+      if (!confirm(device.name + ' ko remove karein?')) return;
+      try {
+        await api('/api/local/device?id=' + encodeURIComponent(device.id), {method: 'DELETE'});
+        toast('Device remove ho gaya');
+        location.reload();
+      } catch (error) { toast(error.message); }
+    };
+    host.appendChild(row);
+  }
+}
+
+async function load() {
+  if (loading) return;
+  loading = true;
+  try {
+    const data = await api('/api/local/devices');
+    const targetInput = document.getElementById('scanTargets');
+    if (targetInput && data.subnet_hint) targetInput.value = data.subnet_hint;
+    const line = document.getElementById('networkLine');
+    if (line) line.textContent = data.subnet_hint
+      ? 'Detected network: ' + data.subnet_hint + ' · IPs apne aap save hote hain.'
+      : 'Network detect nahi hua. Pehle login karein.';
+    renderIpList(data.devices || []);
+    if (!devicesEl) return;
+    devicesEl.innerHTML = '';
+    for (const device of data.devices) devicesEl.appendChild(renderDevice(device));
+    applyFilter();
+    const summary = document.getElementById('summary');
+    if (summary && !scanWatchTimer) {
+      summary.textContent = data.devices.length + ' device(s)' +
+        (hasMissingIp(data) ? ' · saved LAN check ho raha hai…' : ' · saved LAN');
+    }
+    // Pehli baar IP save ho gaya to bas usi se chalao. Sirf tab reconnect karein
+    // jab device jawab na de — scan button dabane ki zarurat nahi.
+    const repair = data.repair || {};
+    if (repair.running || (hasMissingIp(data) && data.subnet_hint)) {
+      if (!repair.running) {
+        try { await api('/api/local/ensure', {method: 'POST'}); } catch (e) {}
+      }
+      watchReconnect();
+    }
+    for (const card of devicesEl.querySelectorAll('.tile')) {
+      if (!card.classList.contains('offline')) refresh(card.dataset.id, card);
+    }
+  } catch (error) {
+    if (devicesEl) devicesEl.innerHTML = '<div class="note">' + esc(error.message) + '</div>';
+  } finally {
+    loading = false;
+  }
+}
+
+/* Drawer */
+const drawer = document.getElementById('drawer');
+const scrim = document.getElementById('scrim');
+function openDrawer(focus) {
+  if (!drawer) return;
+  drawer.classList.add('open'); scrim.classList.add('open');
+  if (focus === 'add') setTimeout(() => document.getElementById('devName')?.focus(), 220);
+}
+function closeDrawer() { drawer?.classList.remove('open'); scrim?.classList.remove('open'); }
+document.getElementById('settingsBtn')?.addEventListener('click', () => openDrawer());
+document.getElementById('addBtn')?.addEventListener('click', () => openDrawer('add'));
+document.getElementById('closeDrawer')?.addEventListener('click', closeDrawer);
+scrim?.addEventListener('click', closeDrawer);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+
+document.getElementById('addForm')?.addEventListener('submit', async event => {
+  event.preventDefault();
+  const payload = {
+    name: document.getElementById('devName').value.trim(),
+    id: document.getElementById('devId').value.trim(),
+    local_key: document.getElementById('devKey').value.trim(),
+    ip: document.getElementById('devIp').value.trim(),
+    version: document.getElementById('devVersion').value,
+    dp: document.getElementById('devDp').value.trim()
+  };
+  try {
+    await api('/api/local/device', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+    });
+    toast('Device save ho gaya');
+    closeDrawer();
+    if (!devicesEl) location.reload(); else load();
+  } catch (error) { toast(error.message); }
+});
+
+document.getElementById('scanBtn')?.addEventListener('click', () => {
+  const hint = document.getElementById('networkLine')?.textContent.match(/[0-9.]+(?:\/\d+)?/);
+  const targets = document.getElementById('scanTargets')?.value.trim() || (hint ? hint[0] + '/24' : '');
+  if (!targets) { toast('Network abhi detect nahi hua'); return; }
+  startScan(targets);
+});
+document.getElementById('scanCustomBtn')?.addEventListener('click', () => {
+  const targets = document.getElementById('scanTargets').value.trim();
+  if (!targets) { toast('Subnet daalein'); return; }
+  startScan(targets);
+});
+document.getElementById('deviceSearch')?.addEventListener('input', applyFilter);
+document.getElementById('refreshAll')?.addEventListener('click', () => {
+  for (const card of devicesEl?.querySelectorAll('.tile') || []) {
+    if (!card.classList.contains('offline')) refresh(card.dataset.id, card);
+  }
+});
+document.getElementById('autoRefresh')?.addEventListener('change', event => {
+  clearInterval(timer);
+  if (event.target.checked) {
+    timer = setInterval(() => {
+      for (const card of devicesEl?.querySelectorAll('.tile') || []) {
+        if (!card.classList.contains('offline')) refresh(card.dataset.id, card);
+      }
+    }, 10000);
+  }
+});
+
+load();
+if (document.getElementById('autoRefresh')?.checked) {
+  timer = setInterval(() => {
+    for (const card of devicesEl?.querySelectorAll('.tile') || []) {
+      if (!card.classList.contains('offline')) refresh(card.dataset.id, card);
+    }
+  }, 10000);
+}
+</script>
+</body>
+</html>

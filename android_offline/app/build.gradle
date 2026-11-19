@@ -1,0 +1,55 @@
+plugins {
+    id 'com.android.application'
+    id 'com.chaquo.python'
+}
+
+android {
+    namespace 'com.example.tuyalocalkey.offline'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.example.tuyalocalkey.offline'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+
+        ndk {
+            // Chaquopy needs explicit ABIs. These match the Android wheels
+            // available for cryptography and Pillow.
+            abiFilters 'arm64-v8a', 'x86_64'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+        }
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+    }
+}
+
+chaquopy {
+    defaultConfig {
+        version = '3.12'
+
+        pip {
+            // Versions with prebuilt Android wheels in Chaquopy's repository.
+            install 'cryptography==42.0.8'
+            install 'pillow==11.0.0'
+            install 'qrcode[pil]>=7.4'
+            install 'tinytuya>=1.21.1'
+            install 'tuya-device-sharing-sdk>=0.2.15'
+            install 'flask>=3.0'
+            install 'waitress>=3.0'
+        }
+    }
+}

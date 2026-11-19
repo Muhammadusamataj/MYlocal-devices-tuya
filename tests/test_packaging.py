@@ -1,0 +1,154 @@
+import re
+import struct
+from pathlib import Path
+
+import yaml
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_home_assistant_metadata_matches_release_image():
+    config = yaml.safe_load((ROOT / "tuya_local_key" / "config.yaml").read_text())
+    repository = yaml.safe_load((ROOT / "repository.yaml").read_text())
+
+    assert repository["name"] == "MY Local Devices Tuya"
+    assert repository["url"] == "https://github.com/Muhammadusamataj/MYlocal-devices-tuya"
+    assert config["name"] == "MY Local Devices Tuya"
+    assert config["slug"] == "tuya_local_key"
+    assert config["version"] == "4.1"
+    assert config["url"] == repository["url"]
+    assert config["image"] == "ghcr.io/muhammadusamataj/mylocal-devices-tuya"
+    assert "legacy" not in config
+    assert config["arch"] == ["aarch64", "amd64"]
+    assert config["ingress"] is True
+    assert config["ingress_port"] == 8000
+    assert config["ingress_entry"] == "/local"
+    assert config["ports"]["8000/tcp"] is None
+    assert config["environment"]["SESSION_FILE"] == "/data/session.json"
+    assert config["environment"]["QR_SCHEME"] == "smartlife"
+    assert config["environment"]["PORT"] == "8000"
+    assert config["options"]["QR_SCHEME"] == "smartlife"
+    assert config["options"]["DEVICE_CACHE"] == "on"
+    assert config["options"]["CHECK_FOR_UPDATES"] is True
+    assert config["options"]["AUTO_SETUP"] == "on"
+    assert config["schema"]["QR_SCHEME"] == "list(smartlife|tuyaSmart)"
+    assert config["schema"]["DEVICE_CACHE"] == "list(on|off)"
+    assert config["schema"]["CHECK_FOR_UPDATES"] == "bool"
+    assert config["schema"]["AUTO_SETUP"] == "list(on|off)"
+    assert config["schema"]["AUTH_USERNAME"] == "str?"
+    assert config["schema"]["AUTH_PASSWORD"] == "password?"
+    assert config["schema"]["LAN_SUBNET"] == "str?"
+
+
+def test_release_version_is_consistent_across_metadata():
+    """config.yaml, the changelog, and the Python package must move together."""
+    config = yaml.safe_load((ROOT / "tuya_local_key" / "config.yaml").read_text())
+    changelog = (ROOT / "tuya_local_key" / "CHANGELOG.md").read_text()
+    pyproject = (ROOT / "pyproject.toml").read_text()
+
+    version = config["version"]
+    headings = re.findall(r"^## (\d+\.\d+(?:\.\d+)?)$", changelog, re.M)
+
+    assert headings[0] == version, "newest released changelog entry must be the app version"
+    assert f"...v{version}" in changelog, "changelog needs a compare link for this release"
+    assert re.search(rf'^version = "{re.escape(version)}\.\d+"$', pyproject, re.M), \
+        "pyproject version must share the app's major.minor"
+
+
+def test_home_assistant_app_icon_exists_and_is_square_png():
+    icon = ROOT / "tuya_local_key" / "icon.png"
+    data = icon.read_bytes()
+
+    assert data.startswith(b"\x89PNG\r\n\x1a\n")
+    assert icon.name == "icon.png"
+    assert struct.unpack(">II", data[16:24]) == (128, 128)
+
+
+def test_dockerfile_has_home_assistant_labels_and_runtime_contract():
+    dockerfile = (ROOT / "Dockerfile").read_text()
+
+    assert 'ARG BUILD_VERSION=dev' in dockerfile
+    assert 'io.hass.version="${BUILD_VERSION}"' in dockerfile
+    assert 'io.hass.type="app"' in dockerfile
+    assert 'io.hass.arch="aarch64|amd64"' in dockerfile
+    assert "PYTHONDONTWRITEBYTECODE=1" in dockerfile
+    assert "USER appuser" not in dockerfile
+    assert "SESSION_FILE=/data/session.json" in dockerfile
+    assert "device_cache.py" in dockerfile
+    assert "device_preferences.py" in dockerfile
+    assert "device_values.py" in dockerfile
+    assert "support_report.py" in dockerfile
+    assert "updates.py" in dockerfile
+    assert "pyproject.toml" in dockerfile
+    assert "lan_scan.py" in dockerfile
+    assert "local_control.py" in dockerfile
+    assert "COPY templates ./templates" in dockerfile
+    assert "COPY static ./static" in dockerfile
+    assert 'VOLUME ["/data"]' in dockerfile
+    assert "waitress-serve --listen=0.0.0.0:${PORT:-8000}" in dockerfile
+
+
+def test_github_workflow_runs_tests_and_publishes_main_and_tags():
+    workflow = yaml.safe_load(
+        (ROOT / ".github" / "workflows" / "docker-publish.yml").read_text()
+    )
+
+    assert workflow[True]["push"] == {"branches": ["main"], "tags": ["v*"]}
+    assert workflow[True]["pull_request"] == {"branches": ["main"]}
+
+    text = (ROOT / ".github" / "workflows" / "docker-publish.yml").read_text()
+    assert "pytest" in text
+    assert "value=${GITHUB_REF_NAME#v}" in text
+    assert "type=raw,value=${{ steps.version.outputs.value }}" in text
+    assert "BUILD_VERSION=${{ steps.version.outputs.value }}" in text
+    assert "push: false" in text
+    assert "push: true" in text
+
+
+def _documentation_screenshot_paths():
+    documents = [ROOT / "README.md", ROOT / "docs" / "screenshots.md"]
+    return {
+        document.parent / path
+        for document in documents
+        for path in re.findall(r'(?:src|srcset)="([^"]+)"', document.read_text())
+        if not path.startswith(("http://", "https://"))
+    }
+
+
+def test_documentation_screenshot_paths_exist():
+    paths = _documentation_screenshot_paths()
+
+    assert paths
+    for path in paths:
+        assert path.is_file(), path
+
+
+def test_every_documentation_screenshot_can_be_regenerated():
+    embedded = {
+        re.sub(r"-(light|dark)$", "", path.stem)
+        for path in _documentation_screenshot_paths()
+    }
+    script = (ROOT / "tools" / "screenshots.py").read_text()
+    shots = set(re.findall(r'^    "([\w-]+)": shot_\w+,$', script, re.MULTILINE))
+
+    assert shots, "SHOTS table not found in tools/screenshots.py"
+    assert embedded == shots
+
+
+def test_downloads_badge_workflow_feeds_the_readme_badge():
+    path = ROOT / ".github" / "workflows" / "downloads-badge.yml"
+    workflow = yaml.safe_load(path.read_text())
+    text = path.read_text()
+    readme = (ROOT / "README.md").read_text()
+
+    assert workflow[True]["schedule"] and "workflow_dispatch" in workflow[True]
+    assert workflow["permissions"] == {"contents": "write"}
+    # It writes to the badges branch only, never to main.
+    pushes = re.findall(r"git push[^\n]*", text)
+    assert pushes == [
+        'git push -q --force-with-lease="refs/heads/badges:$previous" origin "$commit:refs/heads/badges"'
+    ]
+    # It refuses to overwrite a good badge when the count can't be read.
+    assert 'if [ -z "$count" ]' in text and "exit 1" in text
+    assert "badges%2Fdownloads.json" in readme
