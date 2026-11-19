@@ -10,7 +10,7 @@
 
 A fork of **Tuya Local Key** with a devices-first local control screen. Log in once with your Smart Life user code; local keys, IP addresses and protocol versions are remembered so daily ON/OFF control works without the cloud.
 
-> HACS is not required for this app. It is a **Home Assistant add-on** (a small web server), not a HACS custom integration. Install it from the Supervisor add-on store using this repository URL.
+> HACS is not required for the add-on (it is a small web server installed from the Supervisor add-on store). An optional **custom integration** is also included in `custom_components/mylocal_devices` if you want Home Assistant entities for automations and dashboards.
 
 ## Features
 
@@ -39,6 +39,14 @@ A fork of **Tuya Local Key** with a devices-first local control screen. Log in o
 [![Add repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FMuhammadusamataj%2FMYlocal-devices-tuya)
 
 After editing the web app, run `python tools/sync_addon.py` and commit the generated `tuya_local_key/app/` folder so the add-on build always contains the latest code.
+
+## Home Assistant entities / automations (optional)
+
+The add-on alone is a web UI. To use its devices in automations, copy
+`custom_components/mylocal_devices` into your HA config folder, restart HA, then use
+**Settings → Devices & Services → Add Integration → MY Local Devices Tuya**. It
+creates `switch.*` and `sensor.*` entities from the saved devices, with no cloud
+requests. See [custom integration guide](docs/custom-integration.md).
 
 ## Docker
 

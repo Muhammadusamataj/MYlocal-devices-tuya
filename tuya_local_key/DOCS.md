@@ -26,6 +26,17 @@ Set these options on the app's Configuration page:
 | `AUTH_USERNAME` / `AUTH_PASSWORD` | _(unset)_ | Optional login for direct port access. Set both. |
 | `AUTO_SETUP` | `on` | Automatically fetch devices and discover LAN addresses after QR login. |
 
+## Home Assistant entities / automations
+
+This add-on is the web UI. To use the same devices in automations or dashboards, install the optional custom integration included in this repository:
+
+1. Copy `custom_components/mylocal_devices` into `/config/custom_components/`.
+2. Restart Home Assistant.
+3. Go to **Settings → Devices & Services → Add Integration** and choose **MY Local Devices Tuya**.
+4. Leave the fields blank; the add-on URL is detected from Supervisor automatically.
+
+It creates `switch.*` and `sensor.*` entities from the saved devices and talks to the add-on over the internal Supervisor network. See [the integration guide](https://github.com/Muhammadusamataj/MYlocal-devices-tuya/blob/main/docs/custom-integration.md) for details and an automation example.
+
 ## Remote access
 
 Install the **Tailscale** (or WireGuard) add-on in Home Assistant and open this add-on through the Home Assistant sidebar. Ingress + the VPN tunnel give secure remote access without exposing this app on the internet or opening extra router ports.

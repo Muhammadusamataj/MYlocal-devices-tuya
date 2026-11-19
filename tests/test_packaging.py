@@ -1,3 +1,4 @@
+import json
 import re
 import struct
 from pathlib import Path
@@ -16,7 +17,7 @@ def test_home_assistant_metadata_builds_from_source():
     assert repository["url"] == "https://github.com/Muhammadusamataj/MYlocal-devices-tuya"
     assert config["name"] == "MY Local Devices Tuya"
     assert config["slug"] == "tuya_local_key"
-    assert config["version"] == "4.3"
+    assert config["version"] == "4.4"
     assert config["url"] == repository["url"]
     # The Supervisor builds from tuya_local_key/Dockerfile; no GHCR image is
     # required, so Actions billing cannot block installation.
@@ -131,6 +132,23 @@ def test_github_workflow_is_optional_for_tagged_releases():
     assert "BUILD_VERSION=${{ steps.version.outputs.value }}" in text
     assert "push: false" in text
     assert "push: true" in text
+
+
+def test_custom_integration_files_are_shipped():
+    integration = ROOT / "custom_components" / "mylocal_devices"
+    manifest = json.loads((integration / "manifest.json").read_text())
+
+    assert manifest["domain"] == "mylocal_devices"
+    assert manifest["config_flow"] is True
+    assert manifest["iot_class"] == "local_polling"
+    assert (integration / "__init__.py").is_file()
+    assert (integration / "config_flow.py").is_file()
+    assert (integration / "switch.py").is_file()
+    assert (integration / "sensor.py").is_file()
+    assert (ROOT / "docs" / "custom-integration.md").is_file()
+    assert (ROOT / "hacs.json").is_file()
+    assert json.loads((ROOT / "hacs.json").read_text())["name"] == "MY Local Devices Tuya"
+    assert "custom integration" in (ROOT / "README.md").read_text().lower()
 
 
 def _documentation_screenshot_paths():

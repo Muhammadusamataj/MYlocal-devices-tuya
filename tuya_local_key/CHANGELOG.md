@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.4
+- Added an optional Home Assistant custom integration under `custom_components/mylocal_devices`, exposing saved devices as `switch`/`sensor` entities for automations and dashboards.
+- **Full Changelog**: https://github.com/Muhammadusamataj/MYlocal-devices-tuya/compare/v4.3...v4.4
+
 ## 4.3
 - Fixed **Auto scan / Scan network** returning HTTP 404 in Home Assistant ingress: device-page API calls now use ingress-relative URLs.
 - **Full Changelog**: https://github.com/Muhammadusamataj/MYlocal-devices-tuya/compare/v4.2...v4.3
