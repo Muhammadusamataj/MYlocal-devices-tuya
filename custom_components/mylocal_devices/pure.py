@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import ipaddress
+import math
 import re
 
 BOOL_TYPES = {"bool", "boolean"}
+# Sanitised failure codes only; never forward raw exceptions or SDK strings.
+_CODE = re.compile(r"^[a-z0-9][a-z0-9_.]{0,47}$")
 _EXACT_SWITCH = re.compile(
     r"^(switch|switch_\d+|power|power_switch|relay|relay_\d+|onoff|on_off|main_switch)$"
 )
@@ -95,6 +99,115 @@ def point_value(device: dict, point: dict):
     if dp in live:
         return live[dp]
     return point.get("cloud_value")
+
+
+def sanitize_diagnostics(body: dict) -> dict:
+    """Allowlist the add-on's read-only diagnostics for a HA sensor.
+
+    Only connection facts and failure codes survive. Keys, tokens, raw socket
+    errors, DP values, SSID/BSSID, DNS and URLs can never reach an entity.
+    """
+    if not isinstance(body, dict):
+        return {}
+
+    def section(name: str) -> dict:
+        value = body.get(name)
+        return value if isinstance(value, dict) else {}
+
+    def text(value, limit: int = 48) -> str:
+        result = str(value or "").strip()
+        return result[:limit] if result else ""
+
+    def code(value) -> str:
+        result = text(value, 48)
+        return result if _CODE.match(result) else ""
+
+    def number(value) -> float | None:
+        try:
+            result = float(value)
+        except (TypeError, ValueError, OverflowError):
+            return None
+        return result if math.isfinite(result) else None
+
+    def count(value) -> int:
+        try:
+            return max(0, int(value or 0))
+        except (TypeError, ValueError, OverflowError):
+            return 0
+
+    def strict_bool(value) -> bool:
+        if isinstance(value, bool):
+            return value
+        if type(value) is int and value in (0, 1):
+            return bool(value)
+        if isinstance(value, str):
+            lowered = value.strip().lower()
+            if lowered in {"true", "1", "yes", "on"}:
+                return True
+            if lowered in {"false", "0", "no", "off"}:
+                return False
+        return False
+
+    def ip(value) -> str:
+        candidate = text(value, 64)
+        try:
+            parsed = ipaddress.ip_address(candidate)
+        except ValueError:
+            return ""
+        return candidate if parsed.version == 4 else ""
+
+    def ipv4_network(value) -> str:
+        candidate = text(value, 64)
+        try:
+            network = ipaddress.ip_network(candidate, strict=False)
+        except ValueError:
+            return ""
+        return str(network) if network.version == 4 and network.prefixlen >= 8 else ""
+
+    network = section("network")
+    wifi = network.get("wifi") if isinstance(network.get("wifi"), dict) else {}
+    vpn = network.get("vpn") if isinstance(network.get("vpn"), dict) else {}
+    route = (network.get("default_route")
+             if isinstance(network.get("default_route"), dict) else {})
+    addresses = section("addresses")
+    tcp = section("tcp6668")
+    protocol = section("protocol")
+    handshake = (protocol.get("handshake")
+                 if isinstance(protocol.get("handshake"), dict) else {})
+    status = section("status")
+    history = section("history")
+    dp_ids = [str(dp) for dp in (status.get("dp_ids") or [])
+              if str(dp).isdigit()][:64]
+    return {
+        "network_source": code(section("network").get("source")),
+        "network_observed_at": number(section("network").get("observed_at")),
+        "confidence": code(addresses.get("reachable_confidence")),
+        "saved_ip": ip(addresses.get("saved_ip")),
+        "reachable_ip": ip(addresses.get("reachable_ip")),
+        "wifi_connected": strict_bool(wifi.get("connected")),
+        "wifi_ipv4": ipv4_network(wifi.get("ipv4")),
+        "vpn_connected": strict_bool(vpn.get("connected")),
+        "vpn_tailscale_ip": ip(vpn.get("tailscale_ip")),
+        "default_route": code(route.get("transport")),
+        "default_route_active": strict_bool(route.get("is_default")),
+        "tcp_state": code(tcp.get("state")),
+        "tcp_ms": number(tcp.get("elapsed_ms")),
+        "tcp_timeout_ms": number(tcp.get("timeout_ms")),
+        "protocol_configured": code(protocol.get("configured")),
+        "protocol_detected": code(protocol.get("detected")),
+        "handshake_attempted": strict_bool(handshake.get("attempted")),
+        "handshake_match": strict_bool(handshake.get("match")),
+        "handshake_session_key": strict_bool(handshake.get("session_key_installed")),
+        "handshake_error": code(handshake.get("error_kind")),
+        "status_result": code(status.get("result")),
+        "status_read_at": number(status.get("read_at")),
+        "dp_count": len(dp_ids),
+        "dp_ids": dp_ids,
+        "last_ok": number(history.get("last_ok")),
+        "last_failed": number(history.get("last_failed")),
+        "fail_count": count(history.get("fail_count")),
+        "recovery_reason": code(history.get("recovery_reason")),
+    }
 
 
 def merge_live_points(points: list[dict], values: list[dict]) -> list[dict]:
